@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { setDoc, doc } from 'firebase/firestore';
-import { auth, db } from '../src/firebase';
+import { auth, db } from '../firebase';
 
 const AuthForm = ({ onSuccess }) => {
   const [currentScreen, setCurrentScreen] = useState('splash');
