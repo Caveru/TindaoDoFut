@@ -2,12 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
+async function fetchAllUsers() {
+  const usersCol = collection(db, "users");
+  const usersSnap = await getDocs(usersCol);
+  const usersList = usersSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+  return usersList;
+}
+
 const SearchUsers = ({ user }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('todos');
+
+  useEffect(() => {
+    fetchAllUsers().then(users => setUsers(users));
+  }, []);
+  // ...
+  {users.map(user => <div key={user.uid}>{user.nome}</div>)}
+
 
   useEffect(() => {
     const fetchUsers = async () => {
