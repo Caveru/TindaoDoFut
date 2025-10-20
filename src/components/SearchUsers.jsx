@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-
-async function fetchAllUsers() {
-  const usersCol = collection(db, "users");
-  const usersSnap = await getDocs(usersCol);
-  const usersList = usersSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
-  return usersList;
-}
 
 const SearchUsers = ({ user }) => {
   const [allUsers, setAllUsers] = useState([]);
@@ -17,21 +10,12 @@ const SearchUsers = ({ user }) => {
   const [filterType, setFilterType] = useState('todos');
 
   useEffect(() => {
-    fetchAllUsers().then(users => setUsers(users));
-  }, []);
-  // ...
-  {users.map(user => <div key={user.uid}>{user.nome}</div>)}
-
-
-  useEffect(() => {
     const fetchUsers = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'users'));
         const usersList = [];
         querySnapshot.forEach((doc) => {
-          if (doc.id !== user.uid) {
-            usersList.push(doc.data());
-          }
+          usersList.push({ uid: doc.id, ...doc.data() });
         });
         setAllUsers(usersList);
         setFilteredUsers(usersList);
@@ -41,31 +25,48 @@ const SearchUsers = ({ user }) => {
         setLoading(false);
       }
     };
-
     fetchUsers();
-  }, [user.uid]);
+  }, [user?.uid]);
 
   useEffect(() => {
     let filtered = allUsers;
-
-    // Filtrar por tipo
     if (filterType !== 'todos') {
       filtered = filtered.filter(u => u.tipo === filterType);
     }
-
-    // Filtrar por termo de busca
     if (searchTerm) {
-      filtered = filtered.filter(u => 
+      filtered = filtered.filter(u =>
         u.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.local?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
     setFilteredUsers(filtered);
   }, [allUsers, searchTerm, filterType]);
 
+  async function sendFriendRequest(fromId, toId) {
+    try {
+      // Criar pedido pendente na subcoleção friends do usuário destino
+      await setDoc(
+        doc(db, "users", toId, "friends", fromId),
+        { status: "pending", since: null }
+      );
+      // Opcional: criar pedido no usuário remetente para controle futuro
+      await setDoc(
+        doc(db, "users", fromId, "friends", toId),
+        { status: "pending", since: null }
+      );
+      alert(`Pedido de amizade enviado para ${toId}!`);
+    } catch (error) {
+      console.error("Erro ao enviar pedido de amizade:", error);
+      alert(`Erro ao enviar pedido: ${error.message}`);
+    }
+  }
+
   const handleConnect = (targetUser) => {
-    alert(`Conectando com ${targetUser.nome}! (Em breve funcionalidade completa)`);
+    if (targetUser.uid === user.uid) {
+      alert('Você não pode se conectar com você mesmo!');
+      return;
+    }
+    sendFriendRequest(user.uid, targetUser.uid);
   };
 
   if (loading) {
@@ -85,7 +86,6 @@ const SearchUsers = ({ user }) => {
       <div className="bg-white shadow-sm sticky top-0 z-10">
         <div className="px-6 py-4">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Encontre Jogadores e Times</h1>
-          
           {/* Barra de Busca */}
           <div className="relative mb-4">
             <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
@@ -99,7 +99,6 @@ const SearchUsers = ({ user }) => {
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
-
           {/* Filtros */}
           <div className="flex space-x-2">
             <button
@@ -135,7 +134,6 @@ const SearchUsers = ({ user }) => {
           </div>
         </div>
       </div>
-
       {/* Lista de Usuários */}
       <div className="px-6 py-4">
         {filteredUsers.length === 0 ? (
@@ -159,7 +157,6 @@ const SearchUsers = ({ user }) => {
                         {targetUser.nome ? targetUser.nome[0].toUpperCase() : '?'}
                       </span>
                     </div>
-                    
                     <div className="flex-1">
                       <div className="flex items-center mb-1">
                         <h3 className="text-lg font-bold text-gray-800 mr-2">
@@ -173,11 +170,9 @@ const SearchUsers = ({ user }) => {
                           {targetUser.tipo === 'time' ? 'Time' : 'Jogador'}
                         </span>
                       </div>
-                      
                       <p className="text-sm text-gray-600 mb-2">
                         {targetUser.sobre || 'Sem descrição disponível'}
                       </p>
-                      
                       <div className="flex items-center text-xs text-gray-500 space-x-4">
                         <div className="flex items-center">
                           <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
@@ -194,7 +189,6 @@ const SearchUsers = ({ user }) => {
                       </div>
                     </div>
                   </div>
-                  
                   <button
                     onClick={() => handleConnect(targetUser)}
                     className="ml-4 px-6 py-2 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors"
@@ -202,7 +196,6 @@ const SearchUsers = ({ user }) => {
                     Conectar
                   </button>
                 </div>
-                
                 {/* Estatísticas */}
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   <div className="flex justify-around text-center">
